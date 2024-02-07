@@ -40,15 +40,24 @@ export default async function handler(req: Request, res: NextApiResponse) {
       try {
         const fileBuffer = fs.readFileSync(req.file.path);
         const data = await pdfParse(fileBuffer);
-        const text = data.text;
-        console.log("Number of pages:", data.numpages);
-        console.log("Number of rendered pages:", data.numrender);
-        console.log("PDF info:", data.info);
-        console.log("PDF metadata:", data.metadata);
-        console.log("PDF.js version:", data.version);
-        console.log("PDF text:", data.text);
 
-        res.status(200).json({ message: "Text extracted successfully", text });
+        res.status(200).json({
+          content: {
+            full: data.text,
+            split: splitToChunks(data.text, 10).map((ck) => ({
+              length: ck.length,
+              chunk: ck,
+            })),
+          },
+          status: "Ok",
+          numrender: data.numrender,
+          length: {
+            characters: data.text.length,
+          },
+          pages: data.numpages,
+
+          meta: data.metadata,
+        });
       } catch (error) {
         console.error("Error extracting text from PDF:", error);
         res.status(500).json({ error: "Error extracting text from PDF" });
@@ -63,3 +72,30 @@ export default async function handler(req: Request, res: NextApiResponse) {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 }
+
+const splitToChunks = (text: string, numChunks: number = 1) => {
+  // Dividir o texto em linhas
+  const lines = text.split(/\r?\n/);
+  const chunks = [];
+  let currentChunk = "";
+
+  // Loop através de cada linha
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Verificar se adicionar a linha não vai ultrapassar o limite de tamanho do chunk
+    if ((currentChunk + line).length <= Math.ceil(text.length / numChunks)) {
+      currentChunk += line + "\n";
+    } else {
+      // Se adicionar a linha ultrapassar o limite, iniciar um novo chunk
+      chunks.push(currentChunk.trim());
+      currentChunk = line + "\n";
+    }
+  }
+
+  // Adicionar o último chunk
+  if (currentChunk.trim() !== "") {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks;
+};
