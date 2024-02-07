@@ -26,7 +26,15 @@ export default async function handler(req: Request, res: NextApiResponse) {
         const data = await parsePDFFile(req.file);
         const chunks = splitTo10kChunks(data.text);
 
+        let insights: any[] = [];
+        for (let i = 0; i < 5; i++) {
+          const insight = await getInsights(chunks[i]);
+          const parsedInsight: { ideas: string[] } = JSON.parse(insight || "");
+          insights = [...insights, ...parsedInsight.ideas];
+        }
+
         res.status(200).json({
+          insights: insights,
           content: {
             chunks: chunks.length,
             split: chunks.map((ck) => ({
@@ -81,7 +89,7 @@ const parsePDFFile = async (file: any) => {
 };
 
 const splitTo10kChunks = (str: string): string[] => {
-  const maxLength = 10000; // Comprimento máximo de cada pedaço
+  const maxLength = 6000; // Comprimento máximo de cada pedaço
   const chunks: string[] = [];
   let currentChunk = "";
 
@@ -100,4 +108,28 @@ const splitTo10kChunks = (str: string): string[] => {
   }
 
   return chunks;
+};
+
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+});
+
+const getInsights = async (content: string) => {
+  const response = await openai.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages: [
+      {
+        role: "user",
+        content: `Analise o texto a seguir. Em seguida, extraia até 5 ideias ou afirmações importantes contidas nele. Finalmente, retorne essas afirmações no formato de JSON. Para cada afirmação, traga também seu autor e ano. Exemplo de retorno: {"ideas": ["Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)",...]}. Garanta que o JSON está formatado corretamente. Retorne as frases em PORTUGUÊS.\n\n<text>${content}</text>`,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 256,
+    top_p: 1,
+    frequency_penalty: 0,
+    presence_penalty: 0,
+  });
+  return response.choices[0].message.content;
 };
