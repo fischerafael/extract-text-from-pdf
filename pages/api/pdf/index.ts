@@ -146,7 +146,7 @@ const getInsights = async (content: string) => {
     messages: [
       {
         role: "user",
-        content: `Analise o texto a seguir. Em seguida, extraia até 5 ideias ou afirmações importantes contidas nele. Finalmente, retorne essas afirmações no formato de JSON. Para cada afirmação, traga também seu autor e ano. Exemplo de retorno: {"ideas": ["Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)",...]}. Se não for possível identificar o autor, utilize o autor do artigo e ano do artigo como valores default. Garanta que o JSON está formatado corretamente. Retorne as frases em PORTUGUÊS.\n\n<text>${content}</text>`,
+        content: `Analise o texto a seguir. Em seguida, extraia até 5 ideias ou afirmações importantes contidas nele. Finalmente, retorne essas afirmações no formato de JSON. Retorne as frases em PORTUGUÊS. Para cada afirmação, traga também seu autor e ano. Exemplo de retorno: {"ideas": ["Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar ({author}, {year})",...]}. Se não for possível identificar o autor, utilize o {autor} do artigo e {ano} do artigo como valores default. Garanta que o JSON está formatado corretamente. Se o texto for apenas uma lista de Referências Bibliográficas, não retorne elas. \n\n<text>${content}</text>`,
       },
     ],
     temperature: 0.7,
