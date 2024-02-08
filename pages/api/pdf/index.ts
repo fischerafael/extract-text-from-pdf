@@ -25,13 +25,26 @@ export default async function handler(req: Request, res: NextApiResponse) {
         await uploadPDFTemp(req, res);
         const data = await parsePDFFile(req.file);
         const chunks = splitTo10kChunks(data.text);
+        console.log("[chunks]", chunks);
 
-        let insights: any[] = [];
-        for (let i = 0; i < 5; i++) {
-          const insight = await getInsights(chunks[i]);
-          const parsedInsight: { ideas: string[] } = JSON.parse(insight || "");
-          insights = [...insights, ...parsedInsight.ideas];
-        }
+        const promises = chunks.map(async (chunk, index) => {
+          const insight = await getInsights(chunk);
+          console.log("[insight]", index);
+          const parsedInsight: { ideas: string[] } = parseJson(insight);
+          console.log("[parsedInsight]", parsedInsight);
+          return parsedInsight.ideas;
+        });
+
+        const result = await Promise.all(promises);
+        console.log("[result]", result);
+        const insights: string[] = result.flat();
+
+        // let insights: any[] = [];
+        // for (let i = 0; i < chunks.length; i++) {
+        //   const insight = await getInsights(chunks[i]);
+        //   const parsedInsight: { ideas: string[] } = JSON.parse(insight || "");
+        //   insights = [...insights, ...parsedInsight.ideas];
+        // }
 
         res.status(200).json({
           insights: insights,
@@ -65,6 +78,17 @@ export default async function handler(req: Request, res: NextApiResponse) {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 }
+
+const parseJson = (insight: string | null): { ideas: string[] } => {
+  try {
+    return JSON.parse(insight || "");
+  } catch (e: any) {
+    console.log("[ERROR PARSING TO JSON]", e.message);
+    return {
+      ideas: ["ERROR", e.message],
+    };
+  }
+};
 
 const uploadPDFTemp = async (req: any, res: any) => {
   await new Promise((resolve, reject) => {
@@ -122,7 +146,7 @@ const getInsights = async (content: string) => {
     messages: [
       {
         role: "user",
-        content: `Analise o texto a seguir. Em seguida, extraia até 5 ideias ou afirmações importantes contidas nele. Finalmente, retorne essas afirmações no formato de JSON. Para cada afirmação, traga também seu autor e ano. Exemplo de retorno: {"ideas": ["Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)",...]}. Garanta que o JSON está formatado corretamente. Retorne as frases em PORTUGUÊS.\n\n<text>${content}</text>`,
+        content: `Analise o texto a seguir. Em seguida, extraia até 5 ideias ou afirmações importantes contidas nele. Finalmente, retorne essas afirmações no formato de JSON. Para cada afirmação, traga também seu autor e ano. Exemplo de retorno: {"ideas": ["Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)", "Atmosferas é o mood de um lugar (Author, ano)",...]}. Se não for possível identificar o autor, utilize o autor do artigo e ano do artigo como valores default. Garanta que o JSON está formatado corretamente. Retorne as frases em PORTUGUÊS.\n\n<text>${content}</text>`,
       },
     ],
     temperature: 0.7,
