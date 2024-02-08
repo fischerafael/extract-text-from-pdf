@@ -39,13 +39,6 @@ export default async function handler(req: Request, res: NextApiResponse) {
         console.log("[result]", result);
         const insights: string[] = result.flat();
 
-        // let insights: any[] = [];
-        // for (let i = 0; i < chunks.length; i++) {
-        //   const insight = await getInsights(chunks[i]);
-        //   const parsedInsight: { ideas: string[] } = JSON.parse(insight || "");
-        //   insights = [...insights, ...parsedInsight.ideas];
-        // }
-
         res.status(200).json({
           insights: insights,
           content: {
